@@ -640,8 +640,14 @@ public:
         auto appLinglongPath = util::ensureUserDir({".linglong", appId});
         mountMap.push_back(qMakePair(appLinglongPath, util::getUserFile(".linglong/" + appId)));
 
+	// .local/share/icons需要被沙箱外程序访问，临时挂载到.linglong/下
+        auto appLocalIconPath = util::ensureUserDir({".linglong", appId, "/share/icons"});
+        mountMap.push_back(qMakePair(util::getUserFile(".local/share/icons"), appLocalIconPath));
+
         auto appLocalDataPath = util::ensureUserDir({".linglong", appId, "/share"});
         mountMap.push_back(qMakePair(appLocalDataPath, util::getUserFile(".local/share")));
+        
+	mountMap.push_back(qMakePair(appLocalIconPath, util::getUserFile(".local/share/icons")));
 
         auto appConfigPath = util::ensureUserDir({".linglong", appId, "/config"});
         mountMap.push_back(qMakePair(appConfigPath, util::getUserFile(".config")));
