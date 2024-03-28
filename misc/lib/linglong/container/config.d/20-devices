@@ -1,0 +1,42 @@
+#!/bin/env bash
+
+set -Eeo pipefail
+
+# FIXME(black_desk):
+# This executable should be code in cpp.
+
+exec jq -c -M '
+if .ociVersion != "1.0.1" then
+        . as $origin | debug("OCI version mismatched.") | $origin
+else
+        .mounts += [ {
+                "destination": "/run/udev",
+                "type": "bind",
+                "source": "/run/udev",
+                "options": [
+                        "rbind"
+                ]
+        },{
+                "destination": "/dev/dri",
+                "type": "bind",
+                "source": "/dev/dri",
+                "options": [
+                        "rbind"
+                ]
+        },{
+                "destination": "/dev/snd",
+                "type": "bind",
+                "source": "/dev/snd",
+                "options": [
+                        "rbind"
+                ]
+        }' \
+        "$(
+                find /dev -regex '/dev/video[0-9]+' -printf ' , {
+                "destination": "%p",
+                "type": "bind",
+                "source": "%p",
+                "options": [ "rbind" ]
+        }'
+        )"']
+end'

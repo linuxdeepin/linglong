@@ -50,8 +50,7 @@ public:
     auto cancellable() noexcept { return m_cancelFlag; }
 
 Q_SIGNALS:
-    void
-    TaskChanged(QString taskID, QString percentage, QString message, Status status, QPrivateSignal);
+    void TaskChanged(QString taskID, QString percentage, QString message, Status status);
 
 private:
     QString formatPercentage(double increase = 0) const noexcept;
@@ -65,7 +64,6 @@ private:
                                                  { installBase, 20 }, { installApplication, 20 },
                                                  { postInstall, 20 }, { Success, 10 },
                                                  { Failed, 10 } };
-
 };
 
 } // namespace linglong::service

@@ -30,6 +30,9 @@ public:
     QString toString() const noexcept;
     QString getTriplet() const noexcept;
 
+    bool operator==(const Architecture &that) const noexcept { return this->v == that.v; }
+    bool operator!=(const Architecture &that) const noexcept { return this->v != that.v; }
+
     static utils::error::Result<Architecture> parse(const QString &raw) noexcept;
 
 private:

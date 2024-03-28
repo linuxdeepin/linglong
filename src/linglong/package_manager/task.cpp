@@ -16,7 +16,8 @@ InstallTask::InstallTask(const QUuid &taskID, QObject *parent)
 {
 }
 
-InstallTask::~InstallTask() {
+InstallTask::~InstallTask()
+{
     g_object_unref(m_cancelFlag);
 }
 
@@ -29,7 +30,7 @@ void InstallTask::updateTask(double currentPercentage,
     }
 
     auto increase = (currentPercentage / totalPercentage) * partsMap[m_status];
-    Q_EMIT TaskChanged(taskID(), formatPercentage(increase), message, m_status, {});
+    Q_EMIT TaskChanged(taskID(), formatPercentage(increase), message, m_status);
 }
 
 void InstallTask::updateStatus(Status newStatus, QString message) noexcept
@@ -43,7 +44,7 @@ void InstallTask::updateStatus(Status newStatus, QString message) noexcept
     }
 
     m_status = newStatus;
-    Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status, {});
+    Q_EMIT TaskChanged(taskID(), formatPercentage(), message, m_status);
 }
 
 QString InstallTask::formatPercentage(double increase) const noexcept
@@ -53,8 +54,9 @@ QString InstallTask::formatPercentage(double increase) const noexcept
     return ret;
 }
 
-void InstallTask::cancelTask() noexcept {
-    if(!g_cancellable_is_cancelled(m_cancelFlag)) {
+void InstallTask::cancelTask() noexcept
+{
+    if (!g_cancellable_is_cancelled(m_cancelFlag)) {
         g_cancellable_cancel(m_cancelFlag);
     }
 }

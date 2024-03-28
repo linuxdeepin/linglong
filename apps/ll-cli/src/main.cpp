@@ -3,15 +3,14 @@
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-
-#include "linglong/builder/builder.h"
 #include "linglong/cli/cli.h"
 #include "linglong/cli/json_printer.h"
 #include "linglong/repo/config.h"
 #include "linglong/repo/ostree_repo.h"
-#include "linglong/util/configure.h"
-#include "linglong/util/connection.h"
+#include "linglong/runtime/container_builder.h"
+#include "linglong/utils/configure.h"
 #include "linglong/utils/finally/finally.h"
+#include "ocppi/cli/crun/Crun.hpp"
 #include "spdlog/logger.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/sinks/systemd_sink.h"
@@ -117,8 +116,6 @@ int main(int argc, char **argv)
       [&argc, &argv]() {
           auto raw_args = transformOldExec(argc, argv);
 
-          registerDBusParam();
-
           std::map<std::string, docopt::value> args =
             docopt::docopt(Cli::USAGE,
                            raw_args,
@@ -126,10 +123,11 @@ int main(int argc, char **argv)
                            "linglong CLI " LINGLONG_VERSION); // version string
 
           auto pkgManConn = QDBusConnection::systemBus();
-          auto pkgMan = std::make_shared<linglong::api::dbus::v1::PackageManager>(
-            "org.deepin.linglong.PackageManager",
-            "/org/deepin/linglong/PackageManager",
-            pkgManConn);
+          auto pkgMan =
+            new linglong::api::dbus::v1::PackageManager("org.deepin.linglong.PackageManager",
+                                                        "/org/deepin/linglong/PackageManager",
+                                                        pkgManConn,
+                                                        QCoreApplication::instance());
 
           if (args["--no-dbus"].asBool()) {
               if (getuid() != 0) {
@@ -142,7 +140,6 @@ int main(int argc, char **argv)
 
               const auto pkgManAddress = QString("unix:path=/tmp/linglong-package-manager.socket");
 
-              startProcess("ll-system-helper", { "--no-dbus" });
               QThread::sleep(1);
 
               startProcess("sudo",
@@ -162,10 +159,11 @@ int main(int argc, char **argv)
                   return;
               }
 
-              pkgMan = std::make_shared<linglong::api::dbus::v1::PackageManager>(
-                "",
-                "/org/deepin/linglong/PackageManager",
-                pkgManConn);
+              pkgMan =
+                new linglong::api::dbus::v1::PackageManager("",
+                                                            "/org/deepin/linglong/PackageManager",
+                                                            pkgManConn,
+                                                            QCoreApplication::instance());
           }
 
           std::unique_ptr<Printer> printer;
@@ -176,19 +174,19 @@ int main(int argc, char **argv)
           }
 
           linglong::api::client::ClientApi api;
-          auto config =
-            linglong::repo::loadConfig({ linglong::util::getLinglongRootPath() + "/config.yaml",
-                                         LINGLONG_DATA_DIR "/config.yaml" });
+          auto config = linglong::repo::loadConfig(
+            { LINGLONG_ROOT "/config.yaml", LINGLONG_DATA_DIR "/config.yaml" });
           if (!config.has_value()) {
               qCritical() << config.error();
           }
-          linglong::repo::OSTreeRepo ostree(linglong::util::getLinglongRootPath(), *config, api);
+          auto *repo = new linglong::repo::OSTreeRepo(QDir(LINGLONG_ROOT), *config, api);
+          repo->setParent(QCoreApplication::instance());
 
           std::unique_ptr<spdlog::logger> logger;
           {
               auto sinks = std::vector<std::shared_ptr<spdlog::sinks::sink>>(
                 { std::make_shared<spdlog::sinks::systemd_sink_mt>("ocppi") });
-              if (isatty(stderr->_fileno)) {
+              if (isatty(stderr->_fileno) != 0) {
                   sinks.push_back(std::make_shared<spdlog::sinks::stderr_color_sink_mt>());
               }
 
@@ -203,17 +201,22 @@ int main(int argc, char **argv)
               return;
           }
           auto crun = ocppi::cli::crun::Crun::New(path.toStdString(), logger);
-          if (!crun.has_value()) {
+          if (!crun) {
               std::rethrow_exception(crun.error());
           }
-          linglong::service::AppManager appManager(ostree, *crun->get());
-
-          auto cli = new Cli(*printer, appManager, pkgMan, QCoreApplication::instance());
+          auto containerBuidler = new linglong::runtime::ContainerBuilder(**crun);
+          containerBuidler->setParent(QCoreApplication::instance());
+          auto cli = new linglong::cli::Cli(*printer,
+                                            **crun,
+                                            *containerBuidler,
+                                            *pkgMan,
+                                            *repo,
+                                            QCoreApplication::instance());
 
           QMap<QString, std::function<int(Cli *, std::map<std::string, docopt::value> &)>>
             subcommandMap = { { "run", &Cli::run },
                               { "exec", &Cli::exec },
-                              { "enter", &Cli::enter },
+                              { "enter", &Cli::exec },
                               { "ps", &Cli::ps },
                               { "kill", &Cli::kill },
                               { "install", &Cli::install },

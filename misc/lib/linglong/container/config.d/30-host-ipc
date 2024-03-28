@@ -1,0 +1,64 @@
+#!/bin/env bash
+
+set -Eeo pipefail
+
+# FIXME(black_desk):
+# This executable should be code in cpp.
+
+exec jq -c -M '
+if .ociVersion != "1.0.1" then 
+        . as $origin | debug("OCI version mismatched.") | $origin
+else
+        .mounts += [ {
+                "destination": "/tmp/.X11-unix",
+                "type": "bind",
+                "source": "/tmp/.X11-unix",
+                "options": [
+                        "rbind"
+                ]
+        }, ' \
+        "$(
+                DBUS_SYSTEM_BUS_ADDRESS=${DBUS_SYSTEM_BUS_ADDRESS:="/run/dbus/system_bus_socket"}
+                if [ "$DBUS_SYSTEM_BUS_ADDRESS" != "/run/dbus/system_bus_socket" ]; then
+                        echo >&2 "Non default DBUS_SYSTEM_BUS_ADDRESS $DBUS_SYSTEM_BUS_ADDRESS is not supported now"
+                        exit 255
+                fi
+
+                if [ ! -S "$DBUS_SYSTEM_BUS_ADDRESS" ]; then
+                        echo >&2 "D-Bus system bus socket not found at $DBUS_SYSTEM_BUS_ADDRESS"
+                        exit 255
+                fi
+
+                echo ', {
+                        "destination": "'"$DBUS_SYSTEM_BUS_ADDRESS"'",
+                        "type": "bind",
+                        "source": "'"$DBUS_SYSTEM_BUS_ADDRESS"'",
+                        "options": [
+                                "rbind"
+                        ]
+                }'
+        )" \
+        "$(
+                XAUTHORITY=${XAUTHORITY:=$HOME/.Xauthority}
+
+                if [ "$XAUTHORITY" != "$HOME/.Xauthority" ]; then
+                        echo >&2 "Non default XAUTHORITY $XAUTHORITY is not supported now"
+                        exit 255
+                fi
+
+                if [ ! -f "$XAUTHORITY" ]; then
+                        echo >&2 "XAUTHORITY file not found at $XAUTHORITY"
+                        exit 255
+                fi
+
+                echo ', {
+                        "destination": "'"$XAUTHORITY"'",
+                        "type": "bind",
+                        "source": "'"$XAUTHORITY"'",
+                        "options": [
+                                "rbind"
+                        ]
+                }'
+        )" \
+        ']
+end'

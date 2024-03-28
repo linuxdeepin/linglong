@@ -63,7 +63,7 @@ TEST(Package, Reference)
     };
 
     for (const auto &vaildCase : vaildFuzzReferences) {
-        auto refer = FuzzReference::parse(vaildCase.first);
+        auto refer = FuzzyReference::parse(vaildCase.first);
         ASSERT_EQ(refer.has_value(), true)
           << vaildCase.first.toStdString() << " is vaild fuzz reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());
@@ -82,7 +82,7 @@ TEST(Package, Reference)
     };
 
     for (const auto &vaildCase : invaildFuzzReferences) {
-        auto refer = FuzzReference::parse(vaildCase);
+        auto refer = FuzzyReference::parse(vaildCase);
         ASSERT_EQ(refer.has_value(), false)
           << vaildCase.toStdString() << " is invaild fuzz reference. Error: "
           << (refer.has_value() ? "no error" : refer.error().message().toStdString());

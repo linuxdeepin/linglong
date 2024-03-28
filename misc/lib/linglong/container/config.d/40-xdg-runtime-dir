@@ -1,0 +1,115 @@
+#!/bin/env bash
+
+set -Eeo pipefail
+
+# FIXME(black_desk):
+# This executable should be code in cpp.
+# And it should handle UID=0
+
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:="/run/user/$UID"}
+
+if [ "$XDG_RUNTIME_DIR" != "/run/user/$UID" ]; then
+        echo >&2 "Non default XDG_RUNTIME_DIR is not supported now."
+        exit 255
+fi
+
+DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:="$XDG_RUNTIME_DIR/bus"}
+
+exec jq -c -M '
+if .ociVersion != "1.0.1" then 
+        . as $origin | debug("OCI version mismatched.") | $origin
+else
+        .mounts += [ {
+                "destination": "'"$XDG_RUNTIME_DIR"'",
+                "type": "tmpfs",
+                "source": "tmpfs",
+                "options": [
+                        "nodev",
+                        "nosuid",
+                        "mode=700"
+                ]
+        } , {
+                "destination": "'"$XDG_RUNTIME_DIR"'/pulse",
+                "type": "bind",
+                "source": "'"$XDG_RUNTIME_DIR"'/pulse",
+                "options": [
+                        "rbind"
+                ]
+        } , {
+                "destination": "'"$XDG_RUNTIME_DIR"'/gvfs",
+                "type": "bind",
+                "source": "'"$XDG_RUNTIME_DIR"'/gvfs",
+                "options": [
+                        "rbind"
+                ]
+        } ' \
+        "$(
+                # bind wayland display
+
+                if [ -z "$WAYLAND_DISPLAY" ]; then
+                        exit
+                fi
+
+                if [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; then
+                        echo >&2 "Wayland display socket not found at $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+                        exit 255
+                fi
+
+                echo ', {
+                "destination": "'"$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"'",
+                "type": "bind",
+                "source": "'"$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"'",
+                "options": [
+                        "rbind"
+                ]
+        }'
+        )" \
+        "$(
+                # bind dbus session bus
+
+                # if not $DBUS_SESSION_BUS_ADDRESS starts with unix:path=
+                if case "$DBUS_SESSION_BUS_ADDRESS" in unix:path=*) false ;; esac then
+                        echo >&2 "Unexpected DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
+                        exit 255
+                fi
+
+                DBUS_SESSION_BUS_SOCKET=${DBUS_SESSION_BUS_ADDRESS#unix:path=}
+                if [ ! -S "$DBUS_SESSION_BUS_SOCKET" ]; then
+                        echo >&2 "D-Bus session bus socket not found at $DBUS_SESSION_BUS_SOCKET"
+                        exit 255
+                fi
+
+                # if not $DBUS_SESSION_BUS_SOCKET starts with $XDG_RUNTIME_DIR
+                if case "$DBUS_SESSION_BUS_SOCKET" in "$XDG_RUNTIME_DIR"/*) false ;; esac then
+                        echo >&2 "D-Bus session bus socket not in XDG_RUNTIME_DIR is not supported."
+                        exit 255
+                fi
+
+                echo ', {
+                        "destination": "'"$DBUS_SESSION_BUS_SOCKET"'",
+                        "type": "bind",
+                        "source": "'"$DBUS_SESSION_BUS_SOCKET"'",
+                        "options": [
+                                "rbind"
+                        ]
+                }'
+        )" \
+        "$(
+                # bind dconf
+                
+                if [ ! -d "$XDG_RUNTIME_DIR/dconf" ]; then
+                        echo >&2 "dconf directory not found at $XDG_RUNTIME_DIR/dconf"
+                        exit 255
+                fi
+
+                echo ', {
+                        "destination": "'"$XDG_RUNTIME_DIR/dconf"'",
+                        "type": "bind",
+                        "source": "'"$XDG_RUNTIME_DIR/dconf"'",
+                        "options": [
+                                "rbind"
+                        ]
+                }'
+        )" \
+        ' ]
+end'

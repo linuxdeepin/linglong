@@ -12,7 +12,7 @@ if(PFL_INITIALIZED)
   return()
 endif()
 
-message(STATUS "PFL: --==Version: v0.2.11==--")
+message(STATUS "PFL: --==Version: v0.2.12==--")
 
 # You should call this function in your top level CMakeLists.txt to tell
 # PFL.cmake some global settings about your project.
@@ -213,11 +213,10 @@ function(pfl_add_library)
   else()
     add_library("${TARGET_NAME}" ${PFL_ADD_LIBRARY_TYPE}
                                  ${PFL_ADD_LIBRARY_SOURCES})
-  endif()
-
-  if(PFL_ADD_LIBRARY_SOVERSION AND NOT PFL_ADD_LIBRARY_HEADER_ONLY)
-    set_target_properties("${TARGET_NAME}"
-                          PROPERTIES SOVERSION ${PFL_ADD_LIBRARY_SOVERSION})
+    if(NOT "${PFL_ADD_LIBRARY_SOVERSION}" STREQUAL "")
+      set_target_properties("${TARGET_NAME}"
+                            PROPERTIES SOVERSION ${PFL_ADD_LIBRARY_SOVERSION})
+    endif()
   endif()
 
   if(NOT "${TARGET_ALIAS}" STREQUAL "${TARGET_NAME}")

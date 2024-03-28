@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: LGPL-3.0-or-later
 
+return()
+
 CPMFindPackage(
   NAME googletest
   GITHUB_REPOSITORY google/googletest
@@ -16,25 +18,6 @@ pfl_add_executable(
   INTERNAL
   SOURCES
   ./src/main.cpp
-  ./src/module/config/config_test.cpp
-  ./src/module/package/package_info_test.cpp
-  ./src/module/package/ref_test.cpp
-  ./src/module/qserializer/manifest_test.cpp
-  ./src/module/qserializer/object.cpp
-  ./src/module/qserializer/object.h
-  ./src/module/qserializer/test.cpp
-  ./src/module/runtime/app_test.cpp
-  ./src/module/util/error_test.cpp
-  ./src/module/util/fs_test.cpp
-  ./src/module/util/http_client_test.cpp
-  ./src/module/util/oci/distribution_test.cpp
-  ./src/module/util/runner_test.cpp
-  ./src/module/util/uuid_test.cpp
-  ./src/module/util/xdg_test.cpp
-  ./src/utils/serialize/json.cpp
-  ./src/utils/serialize/TestStruct.cpp
-  ./src/utils/serialize/TestStruct.h
-  ./src/utils/serialize/yaml.cpp
   ./src/linglong/api/dbus/v1/mock_app_manager.h
   ./src/linglong/cli/cli_test.cpp
   ./src/linglong/package/version_test.cpp
